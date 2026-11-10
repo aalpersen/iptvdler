@@ -1,0 +1,36 @@
+-- User data keyed by channel URL so it survives playlist refreshes.
+CREATE TABLE favorite (
+    playlist_id INTEGER NOT NULL,
+    channel_url TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (playlist_id, channel_url)
+);
+
+CREATE TABLE recent (
+    playlist_id INTEGER NOT NULL,
+    channel_url TEXT NOT NULL,
+    watched_at INTEGER NOT NULL,
+    PRIMARY KEY (playlist_id, channel_url)
+);
+
+addFavorite:
+INSERT OR REPLACE INTO favorite(playlist_id, channel_url, added_at) VALUES (?, ?, ?);
+
+removeFavorite:
+DELETE FROM favorite WHERE playlist_id = ? AND channel_url = ?;
+
+markWatched:
+INSERT OR REPLACE INTO recent(playlist_id, channel_url, watched_at) VALUES (?, ?, ?);
+
+trimRecent:
+DELETE FROM recent
+WHERE playlist_id = :playlistId
+  AND channel_url NOT IN (
+      SELECT channel_url FROM recent WHERE playlist_id = :playlistId ORDER BY watched_at DESC LIMIT :keep
+  );
+
+deleteFavoritesByPlaylist:
+DELETE FROM favorite WHERE playlist_id = ?;
+
+deleteRecentByPlaylist:
+DELETE FROM recent WHERE playlist_id = ?;

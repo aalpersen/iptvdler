@@ -1,0 +1,149 @@
+CREATE TABLE download_task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    -- JSON object of HTTP headers, NULL when none
+    http_headers TEXT,
+    -- DownloadKind: 'HLS' | 'DIRECT'
+    kind TEXT NOT NULL,
+    -- DownloadStatus: 'QUEUED' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED'
+    status TEXT NOT NULL,
+    -- Final file (video, or the only file)
+    output_path TEXT NOT NULL,
+    -- Separate audio saved side by side (HLS with a non-muxed audio rendition)
+    audio_output_path TEXT,
+    quality_label TEXT,
+    duration_seconds REAL,
+    -- Direct: Content-Length; HLS: sum of segments once complete
+    total_bytes INTEGER,
+    estimated_bytes INTEGER,
+    downloaded_bytes INTEGER NOT NULL DEFAULT 0,
+    total_segments INTEGER NOT NULL DEFAULT 0,
+    completed_segments INTEGER NOT NULL DEFAULT 0,
+    error TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    -- Recordings (kind HLS_LIVE / DIRECT_LIVE): when to stop (epoch ms, NULL = until stopped)
+    stop_at INTEGER,
+    -- Recordings: live media playlist(s) to poll
+    variant_uri TEXT,
+    audio_uri TEXT
+);
+
+-- HLS segment list snapshot, so a download resumes without re-fetching (or re-interpreting) playlists.
+CREATE TABLE download_segment (
+    task_id INTEGER NOT NULL,
+    -- 0 = main (video or muxed), 1 = separate audio
+    track INTEGER NOT NULL,
+    -- Order within the track; init sections are rows of their own
+    position INTEGER NOT NULL,
+    uri TEXT NOT NULL,
+    range_offset INTEGER,
+    range_length INTEGER,
+    -- AES-128 key URI and the resolved IV (explicit or derived from the media sequence)
+    key_uri TEXT,
+    iv_hex TEXT,
+    is_init INTEGER NOT NULL DEFAULT 0,
+    duration_seconds REAL NOT NULL DEFAULT 0,
+    done INTEGER NOT NULL DEFAULT 0,
+    size INTEGER,
+    PRIMARY KEY (task_id, track, position)
+);
+
+insertTask:
+INSERT INTO download_task(
+    title, source_url, http_headers, kind, status, output_path, audio_output_path, quality_label,
+    duration_seconds, total_bytes, estimated_bytes, total_segments, created_at, updated_at,
+    stop_at, variant_uri, audio_uri
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateRecordingProgress:
+UPDATE download_task
+SET downloaded_bytes = :bytes, duration_seconds = :durationSeconds, updated_at = :updatedAt
+WHERE id = :id;
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
+selectAll:
+SELECT * FROM download_task ORDER BY created_at DESC, id DESC;
+
+selectById:
+SELECT * FROM download_task WHERE id = ?;
+
+selectByStatus:
+SELECT * FROM download_task WHERE status = ? ORDER BY created_at, id;
+
+selectOutputPaths:
+SELECT output_path FROM download_task UNION SELECT audio_output_path FROM download_task WHERE audio_output_path IS NOT NULL;
+
+updateStatus:
+UPDATE download_task SET status = :status, error = :error, updated_at = :updatedAt WHERE id = :id;
+
+updateStatusWhere:
+UPDATE download_task SET status = :newStatus, updated_at = :updatedAt WHERE status = :oldStatus;
+
+updateProgress:
+UPDATE download_task
+SET downloaded_bytes = :downloadedBytes, completed_segments = :completedSegments, updated_at = :updatedAt
+WHERE id = :id;
+
+updateTotalBytes:
+UPDATE download_task SET total_bytes = :totalBytes WHERE id = :id;
+
+markCompleted:
+UPDATE download_task
+SET status = 'COMPLETED', error = NULL, total_bytes = :totalBytes, downloaded_bytes = :totalBytes,
+    completed_segments = total_segments, completed_at = :completedAt, updated_at = :completedAt
+WHERE id = :id;
+
+deleteTask:
+DELETE FROM download_task WHERE id = ?;
+
+insertSegment:
+INSERT INTO download_segment VALUES ?;
+
+selectSegments:
+SELECT * FROM download_segment WHERE task_id = ? ORDER BY track, position;
+
+markSegmentDone:
+UPDATE download_segment SET done = 1, size = :size WHERE task_id = :taskId AND track = :track AND position = :position;
+
+resetSegment:
+UPDATE download_segment SET done = 0, size = NULL WHERE task_id = :taskId AND track = :track AND position = :position;
+
+deleteSegments:
+DELETE FROM download_segment WHERE task_id = ?;
+
+-- Subtitle sidecars of a download: HLS renditions (segments stored under `track`) or files added from a URL.
+CREATE TABLE download_subtitle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    -- download_segment track holding the WebVTT segments (2+); NULL for standalone files
+    track INTEGER,
+    language TEXT NOT NULL,
+    name TEXT NOT NULL,
+    source_uri TEXT NOT NULL,
+    -- 'HLS' (segmented WebVTT) | 'FILE' (standalone .vtt/.srt)
+    kind TEXT NOT NULL,
+    vtt_path TEXT,
+    srt_path TEXT,
+    error TEXT
+);
+
+insertSubtitle:
+INSERT INTO download_subtitle(task_id, track, language, name, source_uri, kind, vtt_path, srt_path)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+selectSubtitles:
+SELECT * FROM download_subtitle WHERE task_id = ? ORDER BY id;
+
+selectAllSubtitles:
+SELECT * FROM download_subtitle ORDER BY task_id, id;
+
+markSubtitleWritten:
+UPDATE download_subtitle SET vtt_path = :vttPath, srt_path = :srtPath, error = :error WHERE id = :id;
+
+deleteSubtitles:
+DELETE FROM download_subtitle WHERE task_id = ?;

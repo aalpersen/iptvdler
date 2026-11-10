@@ -1,0 +1,13 @@
+#EXTM3U url-tvg="http://epg.example.test/guide.xml" x-tvg-url="http://epg.example.test/a.xml,http://epg.example.test/b.xml"
+#EXTINF:-1 tvg-id="news.one" tvg-name="News One" tvg-logo="http://img.example.test/news1.png" group-title="News",News One HD
+http://stream.example.test/live/user/pass/1001.ts
+#EXTINF:-1 tvg-id="sport.one" group-title="Sports" catchup="default" catchup-source="?utc={utc}&lutc={lutc}",Sport One
+http://stream.example.test/sport1/index.m3u8
+#EXTINF:7200 tvg-name="The Movie" group-title="Movies",The Movie (2020)
+http://stream.example.test/movie/user/pass/2001.mkv
+#EXTINF:-1 group-title="Series: Drama",Drama S01E02
+http://stream.example.test/series/user/pass/3002.mp4
+#EXTINF:-1,Plain Channel
+#EXTGRP:Misc
+http://stream.example.test/plain.m3u8
+http://stream.example.test/path/bare-entry.m3u8

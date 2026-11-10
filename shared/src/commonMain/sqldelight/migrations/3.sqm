@@ -1,0 +1,6 @@
+-- v3 -> v4: locale-independent search key for channel names.
+-- Existing rows get an ASCII-lowercased approximation; the next playlist refresh stores the full fold.
+
+ALTER TABLE channel ADD COLUMN search_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE channel_staging ADD COLUMN search_name TEXT NOT NULL DEFAULT '';
+UPDATE channel SET search_name = lower(name);

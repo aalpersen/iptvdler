@@ -1,0 +1,17 @@
+#EXTM3U
+#EXTINF:-1 group-title="Headers",VLC Options
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0) Test
+#EXTVLCOPT:http-referrer=https://ref.example.test/
+#EXTVLCOPT:network-caching=1000
+http://stream.example.test/vlc.m3u8
+#EXTINF:-1 group-title="Headers",Pipe Headers
+http://stream.example.test/pipe.m3u8|User-Agent=My%20Agent%2F1.0&Referer=https%3A%2F%2Fref.example.test%2F&X-Custom=abc
+#EXTINF:-1 group-title="Headers",Kodi Props
+#KODIPROP:inputstream.adaptive.manifest_type=hls
+#KODIPROP:inputstream.adaptive.stream_headers=user-agent=KodiAgent&referrer=https://kodi.example.test/
+http://stream.example.test/kodi.m3u8
+#EXTINF:-1 group-title="Headers",Pipe Overrides VLC
+#EXTVLCOPT:http-user-agent=FromVlc
+http://stream.example.test/override.m3u8|User-Agent=FromPipe
+#EXTINF:-1 group-title="Headers",No Headers
+http://stream.example.test/none.m3u8

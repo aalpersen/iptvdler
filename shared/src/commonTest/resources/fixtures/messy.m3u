@@ -1,0 +1,18 @@
+﻿#EXTM3U
+
+#EXTINF:-1 tvg-name='Single Quoted' group-title='Quotes',Title, With, Commas
+http://stream.example.test/a.m3u8
+#EXTINF:-1 tvg-id=unquoted group-title="Group, With Comma" tvg-logo="",  Spaced Title  
+http://stream.example.test/b.m3u8
+#EXTINF:-1 tvg-name="Orphan without URL",Orphan
+#EXTINF:-1,Duplicate
+http://stream.example.test/dup.m3u8
+#EXTINF:-1,Duplicate
+http://stream.example.test/dup.m3u8
+#extinf:-1 GROUP-TITLE="Lower",lowercase directive
+http://stream.example.test/c.m3u8
+#EXTINF:-1 tvg-name="Name From Attr" group-title="Broken ,
+http://stream.example.test/d.m3u8
+#EXTINF:-1 tvg-name="Fallback Name",
+http://stream.example.test/e.m3u8
+   

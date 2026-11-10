@@ -1,0 +1,9 @@
+-- v5 -> v6 (F2): Xtream Codes accounts.
+
+ALTER TABLE playlist ADD COLUMN xtream_username TEXT;
+ALTER TABLE playlist ADD COLUMN xtream_password TEXT;
+ALTER TABLE playlist ADD COLUMN account_status TEXT;
+ALTER TABLE playlist ADD COLUMN account_expires_at INTEGER;
+
+ALTER TABLE channel ADD COLUMN series_id TEXT;
+ALTER TABLE channel_staging ADD COLUMN series_id TEXT;

@@ -1,0 +1,14 @@
+-- v2 -> v3 (M5): subtitle sidecars of downloads.
+
+CREATE TABLE download_subtitle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    track INTEGER,
+    language TEXT NOT NULL,
+    name TEXT NOT NULL,
+    source_uri TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    vtt_path TEXT,
+    srt_path TEXT,
+    error TEXT
+);

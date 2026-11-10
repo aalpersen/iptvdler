@@ -1,0 +1,48 @@
+-- v1 -> v2 (M4): download tasks and their segment state.
+
+CREATE TABLE download_task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    -- JSON object of HTTP headers, NULL when none
+    http_headers TEXT,
+    -- DownloadKind: 'HLS' | 'DIRECT'
+    kind TEXT NOT NULL,
+    -- DownloadStatus: 'QUEUED' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED'
+    status TEXT NOT NULL,
+    -- Final file (video, or the only file)
+    output_path TEXT NOT NULL,
+    -- Separate audio saved side by side (HLS with a non-muxed audio rendition)
+    audio_output_path TEXT,
+    quality_label TEXT,
+    duration_seconds REAL,
+    -- Direct: Content-Length; HLS: sum of segments once complete
+    total_bytes INTEGER,
+    estimated_bytes INTEGER,
+    downloaded_bytes INTEGER NOT NULL DEFAULT 0,
+    total_segments INTEGER NOT NULL DEFAULT 0,
+    completed_segments INTEGER NOT NULL DEFAULT 0,
+    error TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    completed_at INTEGER
+);
+
+CREATE TABLE download_segment (
+    task_id INTEGER NOT NULL,
+    -- 0 = main (video or muxed), 1 = separate audio
+    track INTEGER NOT NULL,
+    -- Order within the track; init sections are rows of their own
+    position INTEGER NOT NULL,
+    uri TEXT NOT NULL,
+    range_offset INTEGER,
+    range_length INTEGER,
+    -- AES-128 key URI and the resolved IV (explicit or derived from the media sequence)
+    key_uri TEXT,
+    iv_hex TEXT,
+    is_init INTEGER NOT NULL DEFAULT 0,
+    duration_seconds REAL NOT NULL DEFAULT 0,
+    done INTEGER NOT NULL DEFAULT 0,
+    size INTEGER,
+    PRIMARY KEY (task_id, track, position)
+);

@@ -1,0 +1,6 @@
+#EXTM3U
+#EXT-X-TARGETDURATION:6
+#EXT-X-KEY:METHOD=AES-128,URI="https://license.example.test/rightsmanager.asmx",KEYFORMAT="com.microsoft.playready"
+#EXTINF:6.0,
+seg1.ts
+#EXT-X-ENDLIST

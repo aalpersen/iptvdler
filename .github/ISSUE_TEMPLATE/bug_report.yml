@@ -1,0 +1,53 @@
+name: Bug report
+description: Something doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Don't post real playlist URLs, Xtream usernames/passwords, URL tokens or provider names.**
+        Replace them with `example.com`, `user` and `pass`. iptvdler ships no content and can't help with
+        finding any. DRM-protected streams are intentionally not downloadable; that isn't a bug.
+  - type: input
+    id: version
+    attributes:
+      label: iptvdler version
+      description: Settings → About.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Android, Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS version (and VLC version on desktop)
+      placeholder: "Android 14 / Windows 11 + VLC 3.0.21"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If a stream is involved, can you reproduce it with a public test stream (Apple, Mux) or a stream generated as in docs/TESTING.md?
+      placeholder: |
+        1. Add playlist …
+        2. Open …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Desktop crash logs are under Settings → About → Crash logs; on Android, `adb logcat -s iptvdler`. Remove URLs and credentials first.
+      render: text

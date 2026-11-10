@@ -1,0 +1,60 @@
+CREATE TABLE playlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    -- http(s) URL, local file path, or Android content:// URI.
+    source TEXT NOT NULL,
+    -- PlaylistSourceType name: 'URL', 'FILE' or 'XTREAM' (source = server base URL)
+    source_type TEXT NOT NULL,
+    -- NULL = manual refresh only
+    refresh_interval_minutes INTEGER,
+    last_refreshed_at INTEGER,
+    -- Last refresh attempt (success or failure); drives the auto-refresh schedule.
+    last_attempt_at INTEGER,
+    channel_count INTEGER NOT NULL DEFAULT 0,
+    epg_url TEXT,
+    last_error TEXT,
+    created_at INTEGER NOT NULL,
+    -- Xtream Codes login (XTREAM playlists only)
+    xtream_username TEXT,
+    xtream_password TEXT,
+    -- Xtream account as of the last refresh: status text and expiry (epoch millis, NULL = none)
+    account_status TEXT,
+    account_expires_at INTEGER
+);
+
+selectAll:
+SELECT * FROM playlist ORDER BY name COLLATE NOCASE;
+
+selectById:
+SELECT * FROM playlist WHERE id = ?;
+
+selectWithAutoRefresh:
+SELECT * FROM playlist WHERE refresh_interval_minutes IS NOT NULL;
+
+insert:
+INSERT INTO playlist(name, source, source_type, refresh_interval_minutes, created_at, xtream_username, xtream_password)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
+update:
+UPDATE playlist
+SET name = :name, source = :source, source_type = :sourceType, refresh_interval_minutes = :refreshIntervalMinutes,
+    xtream_username = :xtreamUsername, xtream_password = :xtreamPassword
+WHERE id = :id;
+
+markRefreshed:
+UPDATE playlist
+SET last_refreshed_at = :refreshedAt, last_attempt_at = :refreshedAt, channel_count = :channelCount,
+    epg_url = :epgUrl, last_error = NULL
+WHERE id = :id;
+
+markAccount:
+UPDATE playlist SET account_status = :status, account_expires_at = :expiresAt WHERE id = :id;
+
+markFailed:
+UPDATE playlist SET last_error = :error, last_attempt_at = :attemptedAt WHERE id = :id;
+
+deleteById:
+DELETE FROM playlist WHERE id = ?;

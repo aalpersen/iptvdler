@@ -1,0 +1,121 @@
+-- Channels are replaced wholesale on every refresh, so ids are not stable across refreshes.
+-- Anything that must survive a refresh (favorites, recents) is keyed by (playlist_id, url).
+CREATE TABLE channel (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    playlist_id INTEGER NOT NULL,
+    sort_index INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    logo TEXT,
+    -- '' when the entry has no group
+    group_title TEXT NOT NULL,
+    tvg_id TEXT,
+    tvg_name TEXT,
+    -- ContentType name: 'LIVE', 'MOVIE', 'SERIES'
+    content_type TEXT NOT NULL,
+    -- JSON object of HTTP headers, NULL when none
+    http_headers TEXT,
+    catchup TEXT,
+    catchup_source TEXT,
+    duration_seconds REAL,
+    -- SearchText.fold(name): case/accent/dot-insensitive (SQLite LIKE only folds ASCII)
+    search_name TEXT NOT NULL DEFAULT '',
+    -- Xtream series (a container of episodes, not playable itself); NULL for everything else
+    series_id TEXT
+);
+
+CREATE INDEX channel_playlist_sort ON channel(playlist_id, sort_index);
+CREATE INDEX channel_playlist_group ON channel(playlist_id, group_title, sort_index);
+CREATE INDEX channel_playlist_url ON channel(playlist_id, url);
+
+-- A refresh streams entries in here, then swaps them into `channel` in one transaction,
+-- so readers never see a half-loaded playlist and a failed refresh keeps the old list.
+CREATE TABLE channel_staging (
+    playlist_id INTEGER NOT NULL,
+    sort_index INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    logo TEXT,
+    group_title TEXT NOT NULL,
+    tvg_id TEXT,
+    tvg_name TEXT,
+    content_type TEXT NOT NULL,
+    http_headers TEXT,
+    catchup TEXT,
+    catchup_source TEXT,
+    duration_seconds REAL,
+    search_name TEXT NOT NULL DEFAULT '',
+    series_id TEXT
+);
+
+CREATE INDEX channel_staging_playlist ON channel_staging(playlist_id);
+
+insertStaging:
+INSERT INTO channel_staging VALUES ?;
+
+clearStaging:
+DELETE FROM channel_staging WHERE playlist_id = ?;
+
+deleteByPlaylist:
+DELETE FROM channel WHERE playlist_id = ?;
+
+publishStaging:
+INSERT INTO channel(
+    playlist_id, sort_index, name, url, logo, group_title, tvg_id, tvg_name,
+    content_type, http_headers, catchup, catchup_source, duration_seconds, search_name, series_id
+)
+SELECT
+    playlist_id, sort_index, name, url, logo, group_title, tvg_id, tvg_name,
+    content_type, http_headers, catchup, catchup_source, duration_seconds, search_name, series_id
+FROM channel_staging
+WHERE playlist_id = ?
+ORDER BY sort_index;
+
+selectGroups:
+SELECT group_title, COUNT(*) AS channel_count
+FROM channel
+WHERE playlist_id = :playlistId AND (:contentType IS NULL OR content_type = :contentType)
+GROUP BY group_title
+ORDER BY MIN(sort_index);
+
+-- All channel selects return the same columns so they share one mapper.
+selectChannels:
+SELECT c.id, c.playlist_id, c.name, c.url, c.logo, c.group_title, c.tvg_id, c.content_type,
+       c.http_headers, c.catchup, c.catchup_source, c.duration_seconds, c.series_id,
+       CASE WHEN f.channel_url IS NULL THEN 0 ELSE 1 END AS favorite
+FROM channel c
+LEFT JOIN favorite f ON f.playlist_id = c.playlist_id AND f.channel_url = c.url
+WHERE c.playlist_id = :playlistId
+  AND (:groupTitle IS NULL OR c.group_title = :groupTitle)
+  AND (:contentType IS NULL OR c.content_type = :contentType)
+  AND (:favoritesOnly = 0 OR f.channel_url IS NOT NULL)
+  AND c.search_name LIKE :namePattern ESCAPE '\'
+ORDER BY c.sort_index
+LIMIT :limit;
+
+selectRecent:
+SELECT c.id, c.playlist_id, c.name, c.url, c.logo, c.group_title, c.tvg_id, c.content_type,
+       c.http_headers, c.catchup, c.catchup_source, c.duration_seconds, c.series_id,
+       CASE WHEN f.channel_url IS NULL THEN 0 ELSE 1 END AS favorite
+FROM recent r
+JOIN channel c ON c.playlist_id = r.playlist_id AND c.url = r.channel_url
+LEFT JOIN favorite f ON f.playlist_id = c.playlist_id AND f.channel_url = c.url
+WHERE r.playlist_id = :playlistId
+GROUP BY r.channel_url
+ORDER BY MAX(r.watched_at) DESC
+LIMIT :limit;
+
+selectById:
+SELECT c.id, c.playlist_id, c.name, c.url, c.logo, c.group_title, c.tvg_id, c.content_type,
+       c.http_headers, c.catchup, c.catchup_source, c.duration_seconds, c.series_id,
+       CASE WHEN f.channel_url IS NULL THEN 0 ELSE 1 END AS favorite
+FROM channel c
+LEFT JOIN favorite f ON f.playlist_id = c.playlist_id AND f.channel_url = c.url
+WHERE c.id = ?;
+
+-- Rows migrated from v3 only have an ASCII-lowercased search_name.
+selectSearchNamesPage:
+SELECT id, name, search_name FROM channel WHERE id > ? ORDER BY id LIMIT ?;
+
+updateSearchName:
+UPDATE channel SET search_name = ? WHERE id = ?;

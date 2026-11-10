@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  User-supplied IPTV playlists, streams and keys are very often plain http://, so cleartext
+  traffic must be allowed for playback and downloads to work. HTTPS still uses the system CAs.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
